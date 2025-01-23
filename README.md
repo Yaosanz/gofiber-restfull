@@ -2,102 +2,204 @@
 
 ![Golang Logo](https://golang.org/doc/gopher/frontpage.png)
 
-This project is a **RESTful API** built with **Golang**, utilizing the **Gofiber** framework and **GORM** ORM for MySQL database interaction. It's designed for building scalable and efficient web services.
+A simple and efficient RESTful API built with Go, designed to handle user registration, login, and basic user management functionalities. This API uses GORM for MySQL database management and Fiber for handling HTTP requests, alongside other utilities to ensure smooth operations and secure user authentication.
 
-## Features
-- **Golang** backend with **Fiber** for fast HTTP handling.
-- **MySQL** database with **GORM** for ORM support.
-- **Validation** using the `go-playground/validator` package.
-- Environment variable management with `godotenv`.
+## Requirements
 
-## Dependencies
-
-This project uses the following Go modules:
-
-### Core Dependencies
-- **Gofiber** (`github.com/gofiber/fiber/v2`) - Web framework for building APIs with minimal overhead.
-- **GORM** (`gorm.io/gorm`) - Object-Relational Mapping (ORM) library for Golang.
-- **Validator** (`github.com/go-playground/validator/v10`) - Struct validation library.
-- **Godotenv** (`github.com/joho/godotenv`) - Load environment variables from a `.env` file.
-
-### Database
-- **MySQL** Driver (`gorm.io/driver/mysql`) - MySQL driver for GORM.
-
-### Cryptography & Utilities
-- **Golang Crypto** (`golang.org/x/crypto`) - Cryptographic utilities.
-
-### Other Indirect Dependencies
-- **UUID** (`github.com/google/uuid`) - Universally unique identifiers.
-- **Compression** (`github.com/klauspost/compress`) - Compression utilities.
-- **Brotli** (`github.com/andybalholm/brotli`) - Brotli compression for HTTP.
-- **Mimetype** (`github.com/gabriel-vasile/mimetype`) - File type detection.
-- **Date Manipulation** (`github.com/jinzhu/now`) - Date/time parsing utilities.
+- Go 1.23.4 or higher
+- MySQL or compatible database
+- `.env` file for environment variables configuration
 
 ## Installation
 
-### Prerequisites
-
-Ensure you have **Go** installed on your machine:
-
-```bash
-go version
-```
-
 ### Clone the Repository
 
-Clone this repository to your local machine:
+First, clone the repository to your local machine:
 
 ```bash
-git clone https://github.com/your-username/golang-resfull.git
+git clone https://github.com/yaosanz/golang-resfull.git
 cd golang-resfull
-```
-
-### Setup Environment
-
-Create a `.env` file in the root directory to store environment variables:
-
-```ini
-DB_USER=root
-DB_PASSWORD=
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_NAME=golang
 ```
 
 ### Install Dependencies
 
-Install the necessary Go modules:
+This project uses Go modules to manage dependencies. Install all required dependencies by running:
 
 ```bash
 go mod tidy
 ```
 
-### Running the Application
+### Configuration
 
-Start the application with the following command:
+Create a `.env` file in the root directory of the project and add the following configuration:
+
+```env
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASS=password
+DB_NAME=your_db_name
+JWT_SECRET=your_jwt_secret_key
+```
+
+### Run the Application
+
+To run the application locally, simply execute:
 
 ```bash
 go run main.go
 ```
 
-The server will start on `http://localhost:8080`.
+The API should now be running on `http://localhost:3000`.
 
-## Endpoints
+## Features
 
-- **GET** `/` - Returns a simple "Hello World" message.
-- **GET** `/users` - Retrieve all users.
-- **POST** `/users` - Create a new user.
-- **GET** `/users/{id}` - Retrieve a user by ID.
-- **PUT** `/users/{id}` - Update a user by ID.
-- **DELETE** `/users/{id}` - Delete a user by ID.
+- **User Registration**: Users can register by providing their name, email, phone number, and password.
+- **User Login**: Authenticated users can log in with their credentials and receive a JWT token for subsequent requests.
+- **Get Users**: Admin can retrieve a list of all registered users.
+- **Get User by ID**: Retrieve user details based on their unique ID.
+- **Delete User**: Delete a user from the database by their unique ID.
 
-## Contribution
+## API Endpoints
 
-If you would like to contribute, feel free to fork the repository and submit a pull request. Please ensure your changes align with the code style and best practices.
+### `POST /api/register`
+Register a new user.
+
+#### Request Body
+```json
+{
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "phone": "123456789012",
+  "password": "yourpassword"
+}
+```
+
+#### Response
+```json
+{
+  "message": "User registered successfully",
+  "user": {
+    "id": 1,
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "phone": "123456789012"
+  }
+}
+```
+
+### `POST /api/login`
+Login to the application and retrieve a JWT token.
+
+#### Request Body
+```json
+{
+  "email": "john.doe@example.com",
+  "password": "yourpassword"
+}
+```
+
+#### Response
+```json
+{
+  "message": "Login successful",
+  "token": "your-jwt-token",
+  "user": {
+    "id": 1,
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "phone": "123456789012"
+  }
+}
+```
+
+### `GET /api/users`
+Retrieve all users in the system.
+
+#### Response
+```json
+{
+  "message": "Success get all users",
+  "users": [
+    {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "phone": "123456789012"
+    }
+  ]
+}
+```
+
+### `GET /api/user/{id}`
+Retrieve a specific user by their ID.
+
+#### Response
+```json
+{
+  "message": "Success get user by ID",
+  "user": {
+    "id": 1,
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "phone": "123456789012"
+  }
+}
+```
+
+### `DELETE /api/user/{id}`
+Delete a specific user by their ID.
+
+#### Response
+```json
+{
+  "message": "User deleted successfully"
+}
+```
+
+## Dependencies
+
+This project uses the following modules:
+
+- **[Go Fiber](https://github.com/gofiber/fiber)**: A fast and lightweight web framework for Go.
+- **[GORM](https://gorm.io/)**: An ORM (Object-Relational Mapping) library for Go, used for database interactions.
+- **[Validator](https://github.com/go-playground/validator)**: A package for data validation.
+- **[Go Dotenv](https://github.com/joho/godotenv)**: Loads environment variables from a `.env` file.
+- **[JWT](https://github.com/golang-jwt/jwt)**: JSON Web Token (JWT) for handling authentication.
+- **[UUID](https://github.com/google/uuid)**: A package to generate UUIDs for user identification.
+
+### Direct Dependencies
+
+```txt
+github.com/go-playground/validator/v10 v10.24.0
+github.com/gofiber/fiber/v2 v2.52.6
+github.com/joho/godotenv v1.5.1
+golang.org/x/crypto v0.32.0
+gorm.io/driver/mysql v1.5.7
+gorm.io/gorm v1.25.12
+```
+
+### Indirect Dependencies
+
+```txt
+filippo.io/edwards25519 v1.1.0
+github.com/andybalholm/brotli v1.1.0
+github.com/gabriel-vasile/mimetype v1.4.8
+github.com/golang-jwt/jwt/v4 v4.5.1
+github.com/google/uuid v1.6.0
+```
+
+## Contributing
+
+Contributions are welcome! Feel free to fork the repository, make changes, and create a pull request.
+
+1. Fork the repository.
+2. Create a new branch (`git checkout -b feature-name`).
+3. Make your changes.
+4. Commit your changes (`git commit -am 'Add new feature'`).
+5. Push to the branch (`git push origin feature-name`).
+6. Open a pull request.
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-```
-
-Feel free to copy this directly into your `README.md` file. If you need further customization, just let me know!
