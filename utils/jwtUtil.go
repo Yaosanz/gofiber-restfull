@@ -20,7 +20,7 @@ func init() {
 	jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 }
 
-func GenerateJWT(userID uint, email string) (string, error) {
+func GenerateJWT(userID string, email string) (string, error) {
 	claims := jwt.MapClaims{
 		"sub":  userID,
 		"email": email,      

@@ -4,10 +4,11 @@ import (
 	"golang-resfull/database"
 	"golang-resfull/models"
 	"golang-resfull/utils"
+	"strconv"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/crypto/bcrypt"
-	"strconv"
 )
 
 func Register(c *fiber.Ctx) error {
@@ -58,6 +59,15 @@ func Register(c *fiber.Ctx) error {
 	if err := database.DB.Debug().Create(&newUser).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "Failed to create user",
+			"error":   err.Error(),
+		})
+	}
+
+	// Instead of parsing the ID, pass the string ID (UUID or other string-based ID)
+	token, err := utils.GenerateJWT(existingUser.ID, existingUser.Email)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Error generating token",
 		})
 	}
 
@@ -69,6 +79,7 @@ func Register(c *fiber.Ctx) error {
 			"email": newUser.Email,
 			"phone": newUser.Phone,
 		},
+		"token": token, // Return the Bearer token
 	})
 }
 
@@ -107,7 +118,6 @@ func Login(c *fiber.Ctx) error {
 		"message": "Login successful",
 		"token":   token,
 		"user": fiber.Map{
-			"id":    existingUser.ID,
 			"name":  existingUser.Name,
 			"email": existingUser.Email,
 			"phone": existingUser.Phone,
