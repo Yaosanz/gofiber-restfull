@@ -3,6 +3,7 @@ package routes
 import (
 	"golang-resfull/controllers"
 	"golang-resfull/middleware"
+
 	"github.com/gofiber/fiber/v2"
 )
 

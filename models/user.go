@@ -13,6 +13,9 @@ type User struct {
 	Password       string `json:"password" validate:"required"`
 	Phone          string `json:"phone" validate:"required"`
 	ConfirmPassword string `json:"confirm_password" gorm:"-" validate:"required"`
+	Token    		string `json:"-"`
+	gorm.Model
+	
 }
 
 var validate = validator.New()

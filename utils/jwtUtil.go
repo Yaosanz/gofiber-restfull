@@ -32,20 +32,24 @@ func GenerateJWT(userID string, email string) (string, error) {
 }
 
 func ValidateJWT(tokenString string) (jwt.MapClaims, error) {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New("invalid signing method")
-		}
-		return jwtSecret, nil
-	})
+    if len(tokenString) > 7 && tokenString[:7] == "Bearer " {
+        tokenString = tokenString[7:]
+    }
 
-	if err != nil || !token.Valid {
-		return nil, err
-	}
+    token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+        if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+            return nil, errors.New("invalid signing method")
+        }
+        return jwtSecret, nil
+    })
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		return claims, nil
-	}
+    if err != nil || !token.Valid {
+        return nil, err
+    }
 
-	return nil, err
+    if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+        return claims, nil
+    }
+
+    return nil, err
 }

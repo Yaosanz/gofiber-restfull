@@ -1,14 +1,25 @@
 package utils
 
 import (
+	"errors"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
-// HashPassword untuk melakukan hashing password
 func HashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if len(password) < 8 {
+		return "", errors.New("password must be at least 8 characters long")
+	}
+	
+	const cost = 10 
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), cost)
 	if err != nil {
 		return "", err
 	}
-	return string(bytes), nil
+	return string(hash), nil
+}
+
+
+func ComparePassword(hashedPassword, plainPassword string) error {
+	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(plainPassword))
 }

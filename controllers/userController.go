@@ -13,7 +13,6 @@ import (
 
 func Register(c *fiber.Ctx) error {
 	user := new(models.User)
-
 	if err := c.BodyParser(user); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": "Invalid request body",
@@ -35,17 +34,19 @@ func Register(c *fiber.Ctx) error {
 		})
 	}
 
-	var existingUser models.User
-	if err := database.DB.Debug().Where("email = ?", user.Email).First(&existingUser).Error; err == nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": "User already exists with that email",
-		})
-	}
-
 	hashPassword, err := utils.HashPassword(user.Password)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "Error hashing password",
+			"error":   err.Error(),
+		})
+	}
+
+	token, err := utils.GenerateJWT(user.ID, user.Email)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Error generating token",
+			"error":   err.Error(),
 		})
 	}
 
@@ -54,20 +55,13 @@ func Register(c *fiber.Ctx) error {
 		Email:    user.Email,
 		Phone:    user.Phone,
 		Password: hashPassword,
+		Token:    token,
 	}
 
-	if err := database.DB.Debug().Create(&newUser).Error; err != nil {
+	if err := database.DB.Create(&newUser).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "Failed to create user",
 			"error":   err.Error(),
-		})
-	}
-
-	// Instead of parsing the ID, pass the string ID (UUID or other string-based ID)
-	token, err := utils.GenerateJWT(existingUser.ID, existingUser.Email)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "Error generating token",
 		})
 	}
 
@@ -79,13 +73,12 @@ func Register(c *fiber.Ctx) error {
 			"email": newUser.Email,
 			"phone": newUser.Phone,
 		},
-		"token": token, // Return the Bearer token
+		"token": token,
 	})
 }
 
 func Login(c *fiber.Ctx) error {
 	user := new(models.User)
-
 	if err := c.BodyParser(user); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": "Invalid request body",
@@ -94,9 +87,10 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	var existingUser models.User
-	if err := database.DB.Debug().Where("email = ?", user.Email).First(&existingUser).Error; err != nil {
+	if err := database.DB.Where("email = ?", user.Email).First(&existingUser).Error; err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"message": "Invalid credentials",
+			"error":   err.Error(),
 		})
 	}
 
@@ -110,6 +104,15 @@ func Login(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "Error generating token",
+			"error":   err.Error(),
+		})
+	}
+
+	existingUser.Token = token
+	if err := database.DB.Save(&existingUser).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Failed to update user token",
+			"error":   err.Error(),
 		})
 	}
 
@@ -118,6 +121,7 @@ func Login(c *fiber.Ctx) error {
 		"message": "Login successful",
 		"token":   token,
 		"user": fiber.Map{
+			"id":    existingUser.ID,
 			"name":  existingUser.Name,
 			"email": existingUser.Email,
 			"phone": existingUser.Phone,
@@ -126,43 +130,93 @@ func Login(c *fiber.Ctx) error {
 }
 
 func GetAllUsers(c *fiber.Ctx) error {
-	var users []*models.User
-
-	if err := database.DB.Debug().Find(&users).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"message": "Error retrieving users",
+	token := c.Get("Authorization")
+	if token == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "Missing token",
 		})
 	}
 
+	if len(token) > 7 && token[:7] == "Bearer " {
+		token = token[7:]
+	}
+
+	claims, err := utils.ValidateJWT(token)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "Invalid token",
+			"error":   err.Error(),
+		})
+	}
+
+	email := claims["email"].(string)
+
+	var users []models.User
+	if err := database.DB.Debug().Find(&users).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Error retrieving users",
+			"error":   err.Error(),
+		})
+	}
+
+	var userList []fiber.Map
 	for _, user := range users {
-		user.Password = ""
+		if user.Email == email { 
+			userList = append(userList, fiber.Map{
+				"id":    user.ID,
+				"name":  user.Name,
+				"email": user.Email,
+				"phone": user.Phone,
+			})
+		}
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"message": "Success get all users",
-		"users":   users,
+		"users":   userList,
 	})
 }
 
 func GetUserById(c *fiber.Ctx) error {
-	var user models.User
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": "Invalid user ID",
+	token := c.Get("Authorization")
+	if token == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "Missing token",
 		})
 	}
 
+	claims, err := utils.ValidateJWT(token)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "Invalid token",
+			"error":   err.Error(),
+		})
+	}
+
+	userID := claims["sub"].(string)
+	id := c.Params("id")
+	if userID != id {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"message": "You do not have access to this resource",
+		})
+	}
+
+	var user models.User
 	if err := database.DB.Debug().First(&user, id).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"message": "User not found",
+			"error":   err.Error(),
 		})
 	}
 
-	user.Password = ""
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message": "Success get user by ID",
-		"user":    user,
+		"message": "User retrieved successfully",
+		"user": fiber.Map{
+			"id":    user.ID,
+			"name":  user.Name,
+			"email": user.Email,
+			"phone": user.Phone,
+		},
 	})
 }
 
@@ -171,6 +225,7 @@ func DeleteUserById(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": "Invalid user ID",
+			"error":   err.Error(),
 		})
 	}
 
